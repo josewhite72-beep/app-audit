@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0a0a0f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AppAudit">
+<title>AppAudit — Clasificador de Proyectos</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<style>
+:root {
+  --bg:     #0a0a0f;
+  --bg2:    #13131a;
+  --bg3:    #1c1c26;
+  --bg4:    #252532;
+  --border: rgba(255,255,255,0.06);
+  --border2:rgba(255,255,255,0.12);
+  --text:   #eeeef5;
+  --text2:  #8888aa;
+  --text3:  #55556a;
+  --accent: #6c8fff;
+  --keep:   #4ade80;
+  --keep-d: rgba(74,222,128,0.13);
+  --del:    #f87171;
+  --del-d:  rgba(248,113,113,0.13);
+  --rev:    #fbbf24;
+  --rev-d:  rgba(251,191,36,0.13);
+  --neu:    #8888aa;
+  --r: 10px; --rs: 6px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);overflow:hidden;}
+#app{display:flex;flex-direction:column;height:100vh;}
+
+/* HEADER */
+header{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--bg);}
+.logo{font-size:16px;font-weight:700;letter-spacing:-0.3px;}
+.logo em{color:var(--accent);font-style:normal;}
+#hdr-stats{font-size:12px;color:var(--text3);margin-left:4px;}
+.hdr-actions{display:flex;gap:6px;margin-left:auto;}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:var(--rs);font-size:12px;font-weight:500;cursor:pointer;border:1px solid var(--border2);background:var(--bg3);color:var(--text);transition:background .15s;white-space:nowrap;}
+.btn:hover{background:var(--bg4);}
+.btn:active{transform:scale(.97);}
+.btn.accent{background:var(--accent);border-color:transparent;color:#fff;}
+.btn.accent:hover{background:#5a7aff;}
+.btn svg{width:14px;height:14px;flex-shrink:0;}
+
+/* TABS */
+#view-tabs{display:flex;gap:0;border-bottom:1px solid var(--border);flex-shrink:0;}
+.vtab{padding:10px 16px;font-size:13px;font-weight:500;cursor:pointer;color:var(--text2);border-bottom:2px solid transparent;transition:all .15s;}
+.vtab:hover{color:var(--text);}
+.vtab.active{color:var(--accent);border-bottom-color:var(--accent);}
+.vtab .badge{display:inline-block;background:var(--bg3);color:var(--text2);font-size:10px;padding:1px 6px;border-radius:999px;margin-left:5px;}
+.vtab.active .badge{background:rgba(108,143,255,.2);color:var(--accent);}
+
+main{flex:1;overflow:hidden;display:flex;flex-direction:column;}
+
+/* DROP ZONE */
+#drop-zone{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:30px 20px;position:relative;}
+#drop-zone.drag-over::before{content:'';position:absolute;inset:12px;border:2px dashed var(--accent);border-radius:16px;background:rgba(108,143,255,.06);pointer-events:none;}
+.dz-icon{width:64px;height:64px;border-radius:18px;background:var(--bg3);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;}
+.dz-icon svg{width:30px;height:30px;color:var(--accent);}
+.dz-title{font-size:20px;font-weight:700;letter-spacing:-.4px;}
+.dz-sub{font-size:13px;color:var(--text2);text-align:center;max-width:320px;line-height:1.6;}
+.dz-btns{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;}
+.tips{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;width:100%;max-width:560px;margin-top:4px;}
+.tip{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;font-size:12px;color:var(--text2);line-height:1.5;}
+.tip strong{display:block;color:var(--text);font-size:12px;margin-bottom:2px;}
+
+/* TOOLBAR */
+#toolbar{display:flex;align-items:center;gap:6px;padding:8px 16px;border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap;}
+#search{flex:1;min-width:140px;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--rs);color:var(--text);padding:6px 10px;font-size:13px;outline:none;}
+#search:focus{border-color:var(--accent);}
+#search::placeholder{color:var(--text3);}
+select{background:var(--bg2);border:1px solid var(--border2);color:var(--text);border-radius:var(--rs);padding:6px 8px;font-size:12px;outline:none;cursor:pointer;}
+#res-count{font-size:12px;color:var(--text3);white-space:nowrap;margin-left:auto;}
+
+/* LABEL FILTER PILLS */
+#label-filters{display:flex;gap:4px;padding:6px 16px;border-bottom:1px solid var(--border);flex-shrink:0;overflow-x:auto;}
+.lf{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:999px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid transparent;transition:all .15s;white-space:nowrap;}
+.lf.all{border-color:var(--border2);color:var(--text2);}
+.lf.all.on{background:var(--bg3);color:var(--text);border-color:var(--border2);}
+.lf.keep{border-color:rgba(74,222,128,.3);color:var(--keep);}
+.lf.keep.on{background:var(--keep-d);}
+.lf.del{border-color:rgba(248,113,113,.3);color:var(--del);}
+.lf.del.on{background:var(--del-d);}
+.lf.rev{border-color:rgba(251,191,36,.3);color:var(--rev);}
+.lf.rev.on{background:var(--rev-d);}
+.lf.none{border-color:var(--border);color:var(--text3);}
+.lf.none.on{background:var(--bg3);}
+
+/* SCROLL AREA */
+#scroll{flex:1;overflow-y:auto;padding:8px;}
+#scroll::-webkit-scrollbar{width:4px;}
+#scroll::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:2px;}
+
+/* PROJECT CARDS */
+.proj-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);margin-bottom:6px;overflow:hidden;transition:border-color .15s;}
+.proj-card:hover{border-color:var(--border2);}
+.proj-card.label-keep{border-left:3px solid var(--keep);}
+.proj-card.label-del{border-left:3px solid var(--del);}
+.proj-card.label-rev{border-left:3px solid var(--rev);}
+
+.proj-head{display:flex;align-items:center;gap:8px;padding:10px 12px;cursor:pointer;}
+.proj-check{width:16px;height:16px;border-radius:4px;border:1.5px solid var(--border2);background:transparent;cursor:pointer;flex-shrink:0;appearance:none;-webkit-appearance:none;transition:all .15s;}
+.proj-check:checked{background:var(--del);border-color:var(--del);}
+.proj-icon{font-size:18px;flex-shrink:0;}
+.proj-name{font-size:13px;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.proj-path{font-size:11px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px;}
+.proj-meta{display:flex;align-items:center;gap:6px;flex-shrink:0;}
+.health-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.proj-size{font-size:11px;color:var(--text2);}
+.proj-count{font-size:11px;color:var(--text3);}
+.expand-btn{color:var(--text3);transition:transform .2s;font-size:16px;flex-shrink:0;line-height:1;}
+
+/* Badges */
+.badge{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:600;padding:2px 7px;border-radius:999px;}
+.b-html{background:rgba(249,115,22,.15);color:#fb923c;}
+.b-js{background:rgba(234,179,8,.15);color:#eab308;}
+.b-css{background:rgba(59,130,246,.15);color:#60a5fa;}
+.b-json{background:rgba(168,85,247,.15);color:#c084fc;}
+.b-sw{background:rgba(45,212,191,.15);color:#2dd4bf;}
+.b-mf{background:rgba(74,222,128,.15);color:#4ade80;}
+.b-img{background:rgba(232,121,249,.15);color:#e879f9;}
+.b-other{background:var(--bg3);color:var(--text3);}
+
+/* Health badges */
+.b-complete{background:rgba(74,222,128,.15);color:var(--keep);}
+.b-partial{background:rgba(251,191,36,.15);color:var(--rev);}
+.b-broken{background:rgba(248,113,113,.15);color:var(--del);}
+
+/* Label buttons */
+.label-btns{display:flex;gap:4px;}
+.lb{padding:3px 8px;border-radius:999px;font-size:10px;font-weight:700;cursor:pointer;border:1px solid transparent;transition:all .15s;opacity:.5;}
+.lb:hover{opacity:1;}
+.lb.keep{border-color:rgba(74,222,128,.4);color:var(--keep);}
+.lb.del{border-color:rgba(248,113,113,.4);color:var(--del);}
+.lb.rev{border-color:rgba(251,191,36,.4);color:var(--rev);}
+.lb.active{opacity:1;}
+.lb.keep.active{background:var(--keep-d);}
+.lb.del.active{background:var(--del-d);}
+.lb.rev.active{background:var(--rev-d);}
+
+/* File list inside project */
+.proj-files{display:none;border-top:1px solid var(--border);padding:6px 12px 10px;}
+.proj-files.open{display:block;}
+.file-item{display:flex;align-items:center;gap:7px;padding:4px 0;font-size:12px;border-bottom:1px solid var(--border);transition:background .1s;}
+.file-item:last-child{border-bottom:none;}
+.fi-icon{font-size:13px;width:18px;text-align:center;flex-shrink:0;}
+.fi-name{flex:1;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.fi-size{color:var(--text3);font-size:11px;min-width:52px;text-align:right;}
+.fi-date{color:var(--text3);font-size:10px;min-width:72px;text-align:right;}
+.fi-ext{font-size:9px;font-weight:700;padding:1px 5px;border-radius:999px;text-transform:uppercase;}
+
+/* FLAT FILES VIEW */
+.flat-row{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:var(--rs);border:1px solid transparent;transition:background .1s;font-size:12px;}
+.flat-row:hover{background:var(--bg2);border-color:var(--border);}
+.fl-icon{font-size:16px;width:20px;text-align:center;flex-shrink:0;}
+.fl-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.fl-folder{color:var(--text3);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px;}
+.fl-size{color:var(--text2);font-size:11px;min-width:56px;text-align:right;}
+.fl-date{color:var(--text3);font-size:10px;min-width:72px;text-align:right;}
+
+/* EMPTY / LOADING */
+#empty{display:none;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:40px;color:var(--text3);font-size:13px;}
+#empty svg{width:36px;height:36px;opacity:.25;}
+#loading{display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;flex:1;color:var(--text2);font-size:13px;}
+.spin{width:28px;height:28px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+#prog{font-size:11px;color:var(--text3);}
+
+/* EXPORT PANEL */
+#export-bar{display:none;align-items:center;gap:8px;padding:10px 16px;border-top:1px solid var(--border);background:var(--bg2);flex-shrink:0;flex-wrap:wrap;}
+#export-bar.on{display:flex;}
+#export-bar span{font-size:12px;color:var(--text2);}
+#sel-count{font-size:12px;font-weight:600;color:var(--del);}
+
+/* STATS CARDS */
+#stat-cards{display:flex;gap:6px;padding:10px 16px;border-bottom:1px solid var(--border);flex-shrink:0;overflow-x:auto;}
+.sc{background:var(--bg2);border:1px solid var(--border);border-radius:var(--rs);padding:8px 12px;white-space:nowrap;min-width:80px;}
+.sc .sv{font-size:18px;font-weight:700;}
+.sc .sl{font-size:10px;color:var(--text3);margin-top:1px;}
+.sc.keep .sv{color:var(--keep);}
+.sc.del  .sv{color:var(--del);}
+.sc.rev  .sv{color:var(--rev);}
+
+@media(max-width:540px){
+  .fi-date,.fl-date{display:none;}
+  .proj-path{max-width:100px;}
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+<header>
+  <div class="logo"><em>App</em>Audit</div>
+  <div id="hdr-stats"></div>
+  <div class="hdr-actions">
+    <button class="btn" id="btn-add-folder" style="display:none" onclick="pickFolder()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+      + Carpeta
+    </button>
+    <button class="btn" id="btn-clear" style="display:none" onclick="clearAll()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+      Limpiar
+    </button>
+  </div>
+</header>
+
+<div id="view-tabs" style="display:none">
+  <div class="vtab active" data-tab="projects" onclick="switchTab('projects')">Proyectos <span class="badge" id="tab-proj-n">0</span></div>
+  <div class="vtab" data-tab="files" onclick="switchTab('files')">Todos los archivos <span class="badge" id="tab-files-n">0</span></div>
+</div>
+
+<main id="main">
+  <!-- Drop zone -->
+  <div id="drop-zone">
+    <div class="dz-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 15v4c0 1.1.9 2 2 2h14a2 2 0 002-2v-4M17 9l-5-5-5 5M12 4v12"/></svg>
+    </div>
+    <div class="dz-title">AppAudit</div>
+    <div class="dz-sub">Abre tu carpeta principal y detectaré automáticamente todos tus proyectos HTML/PWA</div>
+    <div class="dz-btns">
+      <button class="btn accent" onclick="pickFolder()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+        Abrir carpeta
+      </button>
+    </div>
+    <div class="tips">
+      <div class="tip"><strong>🔍 Detecta proyectos</strong>Agrupa por carpeta y analiza qué archivos hay en cada una</div>
+      <div class="tip"><strong>🏥 Estado de salud</strong>¿Tiene index.html, manifest, sw.js? ¿O está incompleto?</div>
+      <div class="tip"><strong>🏷️ Etiqueta</strong>Marca cada proyecto: ✅ Keeper, 🗑️ Eliminar, 🔧 Revisar</div>
+      <div class="tip"><strong>📋 Exporta la lista</strong>CSV con rutas exactas de lo que hay que borrar del móvil</div>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div id="loading">
+    <div class="spin"></div>
+    <div>Escaneando archivos…</div>
+    <div id="prog"></div>
+  </div>
+
+  <!-- Explorer -->
+  <div id="explorer" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
+    <div id="stat-cards"></div>
+    <div id="label-filters">
+      <div class="lf all on" data-lf="all" onclick="setLabelFilter('all')">Todos</div>
+      <div class="lf keep" data-lf="keep" onclick="setLabelFilter('keep')">✅ Keeper</div>
+      <div class="lf rev"  data-lf="rev"  onclick="setLabelFilter('rev')">🔧 Revisar</div>
+      <div class="lf del"  data-lf="del"  onclick="setLabelFilter('del')">🗑️ Eliminar</div>
+      <div class="lf none" data-lf="none" onclick="setLabelFilter('none')">— Sin etiquetar</div>
+    </div>
+    <div id="toolbar">
+      <input type="text" id="search" placeholder="Buscar proyecto o archivo…">
+      <select id="sort-sel">
+        <option value="name">Nombre A→Z</option>
+        <option value="files-desc">Más archivos</option>
+        <option value="files-asc">Menos archivos</option>
+        <option value="size-desc">Tamaño mayor</option>
+        <option value="size-asc">Tamaño menor</option>
+        <option value="health">Estado de salud</option>
+        <option value="label">Etiqueta</option>
+      </select>
+      <span id="res-count"></span>
+    </div>
+    <div id="scroll">
+      <div id="proj-list"></div>
+      <div id="flat-list" style="display:none"></div>
+      <div id="empty">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        Sin resultados
+      </div>
+    </div>
+    <div id="export-bar">
+      <span>Seleccionados para eliminar:</span>
+      <span id="sel-count">0 proyectos</span>
+      <button class="btn" onclick="exportDeleteList('csv')">📋 CSV con rutas</button>
+      <button class="btn" onclick="exportDeleteList('txt')">📝 Lista .txt</button>
+      <button class="btn" onclick="exportAll('json')">📦 Inventario JSON</button>
+      <button class="btn" onclick="exportAll('csv')">📊 Inventario CSV</button>
+    </div>
+  </div>
+</main>
+
+</div>
+<script>
+// ─── DATA ────────────────────────────────────────────────────────
+const HTML_EXTS = new Set(['html','htm']);
+const CODE_EXTS = new Set(['js','ts','jsx','tsx','mjs','cjs','vue','svelte']);
+const STYLE_EXTS = new Set(['css','scss','sass','less']);
+const DATA_EXTS  = new Set(['json','xml','yaml','yml']);
+const IMG_EXTS   = new Set(['png','jpg','jpeg','gif','svg','webp','ico','avif']);
+const PWA_FILES  = new Set(['sw.js','service-worker.js','serviceworker.js']);
+const MANIFEST_F = new Set(['manifest.json','site.webmanifest','manifest.webmanifest']);
+
+let projects = [];   // { id, name, path, files[], size, health, label, checked }
+let allFiles  = [];  // flat list
+let labelFilter = 'all';
+let currentTab  = 'projects';
+let labels = {};     // id → 'keep'|'del'|'rev'|null
+let checked = {};    // id → bool
+
+// ─── PICK FOLDER ─────────────────────────────────────────────────
+async function pickFolder() {
+  try {
+    const dir = await window.showDirectoryPicker({ mode:'read' });
+    showLoading(true);
+    const raw = [];
+    await scanDir(dir, dir.name, raw);
+    allFiles = raw;
+    projects = buildProjects(raw);
+    showExplorer();
+    render();
+  } catch(e) {
+    if (e.name !== 'AbortError') alert('Error: ' + e.message);
+    showLoading(false);
+  }
+}
+
+async function scanDir(handle, path, out) {
+  for await (const [name, entry] of handle) {
+    if (name.startsWith('.') || name === 'node_modules' || name === '__pycache__') continue;
+    if (entry.kind === 'file') {
+      try {
+        const f = await entry.getFile();
+        out.push({ name, path: path+'/'+name, folder: path, size: f.size, modified: f.lastModified, ext: getExt(name) });
+        if (out.length % 200 === 0) {
+          document.getElementById('prog').textContent = out.length + ' archivos encontrados…';
+          await new Promise(r => setTimeout(r,0));
+        }
+      } catch(e){}
+    } else {
+      await scanDir(entry, path+'/'+name, out);
+    }
+  }
+}
+
+function getExt(name) { return name.includes('.') ? name.split('.').pop().toLowerCase() : ''; }
+
+// ─── BUILD PROJECTS ───────────────────────────────────────────────
+function buildProjects(files) {
+  // Group files by their "project root" = deepest ancestor that contains an HTML file
+  const folderMap = {};
+  files.forEach(f => {
+    const k = f.folder;
+    if (!folderMap[k]) folderMap[k] = [];
+    folderMap[k].push(f);
+  });
+
+  // Find folders with HTML files
+  const htmlFolders = new Set();
+  Object.entries(folderMap).forEach(([folder, flist]) => {
+    if (flist.some(f => HTML_EXTS.has(f.ext))) htmlFolders.add(folder);
+  });
+
+  // Collapse: if a folder's parent also has HTML, merge into parent (they're the same project)
+  // We define "project root" = folder with HTML that has no HTML-containing ancestor within 2 levels
+  const roots = [];
+  const sorted = [...htmlFolders].sort();
+  sorted.forEach(folder => {
+    const parts = folder.split('/');
+    let isChild = false;
+    for (let depth = 1; depth <= 3; depth++) {
+      const ancestor = parts.slice(0, parts.length - depth).join('/');
+      if (htmlFolders.has(ancestor)) { isChild = true; break; }
+    }
+    if (!isChild) roots.push(folder);
+  });
+
+  // For each root, collect all files recursively
+  const projs = roots.map((root, i) => {
+    const projFiles = files.filter(f => f.folder === root || f.folder.startsWith(root+'/'));
+    const size = projFiles.reduce((a,f) => a+f.size, 0);
+    const name = root.split('/').pop();
+    const id = 'p'+i;
+    const health = calcHealth(projFiles, name);
+    return { id, name, path: root, files: projFiles, size, health };
+  });
+
+  // Files NOT in any project → "loose files" pseudo-project
+  const inProj = new Set(projs.flatMap(p => p.files.map(f=>f.path)));
+  const loose = files.filter(f => !inProj.has(f.path) && HTML_EXTS.has(f.ext));
+  if (loose.length) {
+    loose.forEach(f => {
+      const projFiles = files.filter(ff => ff.folder === f.folder);
+      const id = 'loose_'+f.path;
+      projs.push({ id, name: f.name, path: f.folder, files: projFiles, size: projFiles.reduce((a,ff)=>a+ff.size,0), health: calcHealth(projFiles, f.name) });
+    });
+  }
+
+  return projs.sort((a,b) => a.name.localeCompare(b.name));
+}
+
+function calcHealth(files, name) {
+  const names = new Set(files.map(f=>f.name.toLowerCase()));
+  const hasHTML  = files.some(f=>HTML_EXTS.has(f.ext));
+  const hasJS    = files.some(f=>CODE_EXTS.has(f.ext));
+  const hasCSS   = files.some(f=>STYLE_EXTS.has(f.ext));
+  const hasSW    = files.some(f=>PWA_FILES.has(f.name.toLowerCase()));
+  const hasMF    = files.some(f=>MANIFEST_F.has(f.name.toLowerCase()));
+  const hasIndex = names.has('index.html') || names.has('index.htm');
+
+  let score = 0;
+  if (hasHTML)  score++;
+  if (hasIndex) score++;
+  if (hasJS)    score++;
+  if (hasCSS)   score++;
+  if (hasSW)    score += 0.5;
+  if (hasMF)    score += 0.5;
+
+  if (score >= 3.5) return 'complete';
+  if (score >= 1.5) return 'partial';
+  return 'broken';
+}
+
+// ─── RENDER ──────────────────────────────────────────────────────
+function render() {
+  renderStatCards();
+  renderTabBadges();
+  updateExportBar();
+  if (currentTab === 'projects') renderProjects();
+  else renderFlat();
+}
+
+function renderStatCards() {
+  const total = projects.length;
+  const keeps = projects.filter(p=>labels[p.id]==='keep').length;
+  const dels  = projects.filter(p=>labels[p.id]==='del').length;
+  const revs  = projects.filter(p=>labels[p.id]==='rev').length;
+  const none  = total - keeps - dels - revs;
+  const totalSize = projects.reduce((a,p)=>a+p.size,0);
+
+  document.getElementById('stat-cards').innerHTML = `
+    <div class="sc"><div class="sv">${total}</div><div class="sl">proyectos</div></div>
+    <div class="sc"><div class="sv">${fmtSize(totalSize)}</div><div class="sl">total</div></div>
+    <div class="sc keep"><div class="sv">${keeps}</div><div class="sl">✅ Keeper</div></div>
+    <div class="sc rev"><div class="sv">${revs}</div><div class="sl">🔧 Revisar</div></div>
+    <div class="sc del"><div class="sv">${dels}</div><div class="sl">🗑️ Eliminar</div></div>
+    <div class="sc"><div class="sv">${none}</div><div class="sl">sin etiquetar</div></div>
+  `;
+  document.getElementById('hdr-stats').textContent = `${total} proyectos · ${allFiles.length} archivos`;
+}
+
+function renderTabBadges() {
+  document.getElementById('tab-proj-n').textContent = projects.length;
+  document.getElementById('tab-files-n').textContent = allFiles.length;
+}
+
+function getFiltered() {
+  const q = document.getElementById('search').value.toLowerCase();
+  return projects.filter(p => {
+    const lbl = labels[p.id] || 'none';
+    if (labelFilter !== 'all' && lbl !== labelFilter) return false;
+    if (q && !p.name.toLowerCase().includes(q) && !p.path.toLowerCase().includes(q)) return false;
+    return true;
+  });
+}
+
+function getSorted(list) {
+  const s = document.getElementById('sort-sel').value;
+  return [...list].sort((a,b) => {
+    switch(s) {
+      case 'name': return a.name.localeCompare(b.name);
+      case 'files-desc': return b.files.length - a.files.length;
+      case 'files-asc':  return a.files.length - b.files.length;
+      case 'size-desc':  return b.size - a.size;
+      case 'size-asc':   return a.size - b.size;
+      case 'health': {
+        const o = {complete:0,partial:1,broken:2};
+        return o[a.health] - o[b.health];
+      }
+      case 'label': {
+        const o = {keep:0,rev:1,none:2,del:3};
+        const la = labels[a.id]||'none', lb = labels[b.id]||'none';
+        return o[la] - o[lb];
+      }
+    }
+    return 0;
+  });
+}
+
+function renderProjects() {
+  const list = getSorted(getFiltered());
+  document.getElementById('res-count').textContent = list.length + ' de ' + projects.length;
+  const el = document.getElementById('proj-list');
+  const empty = document.getElementById('empty');
+
+  if (!list.length) { el.innerHTML = ''; empty.style.display = 'flex'; return; }
+  empty.style.display = 'none';
+
+  el.innerHTML = list.map(p => projCardHTML(p)).join('');
+}
+
+function projCardHTML(p) {
+  const lbl = labels[p.id] || null;
+  const chk = checked[p.id] || false;
+  const hc = { complete:'#4ade80', partial:'#fbbf24', broken:'#f87171' }[p.health];
+  const hl = { complete:'✅ Completo', partial:'⚠️ Parcial', broken:'❌ Incompleto' }[p.health];
+  const hb = { complete:'b-complete', partial:'b-partial', broken:'b-broken' }[p.health];
+
+  // File type summary
+  const fmap = {};
+  p.files.forEach(f => { fmap[f.ext] = (fmap[f.ext]||0)+1; });
+  const htmlN = p.files.filter(f=>HTML_EXTS.has(f.ext)).length;
+  const jsN   = p.files.filter(f=>CODE_EXTS.has(f.ext)).length;
+  const cssN  = p.files.filter(f=>STYLE_EXTS.has(f.ext)).length;
+  const jsonN = p.files.filter(f=>DATA_EXTS.has(f.ext)).length;
+  const hasSW = p.files.some(f=>PWA_FILES.has(f.name.toLowerCase()));
+  const hasMF = p.files.some(f=>MANIFEST_F.has(f.name.toLowerCase()));
+  const imgN  = p.files.filter(f=>IMG_EXTS.has(f.ext)).length;
+
+  const badges = [
+    htmlN ? `<span class="badge b-html">HTML ${htmlN}</span>` : '',
+    jsN   ? `<span class="badge b-js">JS ${jsN}</span>` : '',
+    cssN  ? `<span class="badge b-css">CSS ${cssN}</span>` : '',
+    jsonN ? `<span class="badge b-json">JSON ${jsonN}</span>` : '',
+    hasSW ? `<span class="badge b-sw">SW</span>` : '',
+    hasMF ? `<span class="badge b-mf">Manifest</span>` : '',
+    imgN  ? `<span class="badge b-img">🖼 ${imgN}</span>` : '',
+  ].filter(Boolean).join('');
+
+  const labelClass = lbl ? 'label-'+lbl : '';
+
+  return `<div class="proj-card ${labelClass}" id="card-${p.id}">
+    <div class="proj-head" onclick="toggleExpand('${p.id}')">
+      <input type="checkbox" class="proj-check" ${chk?'checked':''} onclick="toggleCheck(event,'${p.id}')">
+      <span class="proj-icon">${p.health==='complete'?'📦':p.health==='partial'?'📂':'🗂️'}</span>
+      <div style="flex:1;overflow:hidden">
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          <span class="proj-name">${esc(p.name)}</span>
+          <span class="badge ${hb}">${hl}</span>
+          ${badges}
+        </div>
+        <div class="proj-path">${esc(p.path)}</div>
+      </div>
+      <div class="proj-meta">
+        <div class="label-btns" onclick="event.stopPropagation()">
+          <span class="lb keep ${lbl==='keep'?'active':''}" onclick="setLabel('${p.id}','keep')">✅</span>
+          <span class="lb rev  ${lbl==='rev' ?'active':''}" onclick="setLabel('${p.id}','rev')">🔧</span>
+          <span class="lb del  ${lbl==='del' ?'active':''}" onclick="setLabel('${p.id}','del')">🗑️</span>
+        </div>
+        <span class="proj-size">${fmtSize(p.size)}</span>
+        <span class="proj-count">${p.files.length} arch.</span>
+        <span class="expand-btn" id="exp-${p.id}">›</span>
+      </div>
+    </div>
+    <div class="proj-files" id="files-${p.id}">
+      ${p.files.sort((a,b)=>a.name.localeCompare(b.name)).map(fileItemHTML).join('')}
+    </div>
+  </div>`;
+}
+
+function fileItemHTML(f) {
+  const icon = getFileIcon(f.ext, f.name);
+  const extColor = getExtColor(f.ext, f.name);
+  return `<div class="file-item">
+    <span class="fi-icon">${icon}</span>
+    <span class="fi-name">${esc(f.name)}</span>
+    <span class="fi-ext" style="background:${extColor.bg};color:${extColor.fg}">${f.ext||'?'}</span>
+    <span class="fi-size">${fmtSize(f.size)}</span>
+    <span class="fi-date">${fmtDate(f.modified)}</span>
+  </div>`;
+}
+
+function renderFlat() {
+  const q = document.getElementById('search').value.toLowerCase();
+  const s = document.getElementById('sort-sel').value;
+  let files = allFiles.filter(f => !q || f.name.toLowerCase().includes(q) || f.folder.toLowerCase().includes(q));
+  files = [...files].sort((a,b) => {
+    if (s==='name') return a.name.localeCompare(b.name);
+    if (s==='size-desc') return b.size-a.size;
+    if (s==='size-asc')  return a.size-b.size;
+    return a.folder.localeCompare(b.folder)||a.name.localeCompare(b.name);
+  });
+
+  document.getElementById('res-count').textContent = files.length + ' archivos';
+  const el = document.getElementById('flat-list');
+  const empty = document.getElementById('empty');
+  if (!files.length){ el.innerHTML=''; empty.style.display='flex'; return; }
+  empty.style.display='none';
+
+  el.innerHTML = files.map(f => {
+    const icon = getFileIcon(f.ext, f.name);
+    return `<div class="flat-row">
+      <span class="fl-icon">${icon}</span>
+      <span class="fl-name">${esc(f.name)}</span>
+      <span class="fl-folder">${esc(f.folder)}</span>
+      <span class="fl-size">${fmtSize(f.size)}</span>
+      <span class="fl-date">${fmtDate(f.modified)}</span>
+    </div>`;
+  }).join('');
+}
+
+// ─── INTERACTIONS ─────────────────────────────────────────────────
+function toggleExpand(id) {
+  const fc = document.getElementById('files-'+id);
+  const eb = document.getElementById('exp-'+id);
+  if (!fc) return;
+  const open = fc.classList.toggle('open');
+  eb.style.transform = open ? 'rotate(90deg)' : '';
+}
+
+function toggleCheck(e, id) {
+  e.stopPropagation();
+  checked[id] = e.target.checked;
+  updateExportBar();
+}
+
+function setLabel(id, lbl) {
+  if (labels[id] === lbl) { delete labels[id]; }
+  else labels[id] = lbl;
+  const card = document.getElementById('card-'+id);
+  if (card) {
+    card.className = 'proj-card' + (labels[id] ? ' label-'+labels[id] : '');
+    ['keep','rev','del'].forEach(l => {
+      const btn = card.querySelector('.lb.'+l);
+      if (btn) btn.classList.toggle('active', labels[id]===l);
+    });
+  }
+  renderStatCards();
+  updateExportBar();
+}
+
+function setLabelFilter(lf) {
+  labelFilter = lf;
+  document.querySelectorAll('.lf').forEach(el => el.classList.toggle('on', el.dataset.lf===lf));
+  render();
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.vtab').forEach(el => el.classList.toggle('active', el.dataset.tab===tab));
+  document.getElementById('proj-list').style.display = tab==='projects' ? '' : 'none';
+  document.getElementById('flat-list').style.display = tab==='files' ? '' : 'none';
+  render();
+}
+
+function updateExportBar() {
+  const bar = document.getElementById('export-bar');
+  const delLabeled = projects.filter(p=>labels[p.id]==='del').length;
+  const selN = Object.values(checked).filter(Boolean).length;
+  const total = delLabeled + selN;
+  bar.classList.toggle('on', total > 0 || projects.length > 0);
+  document.getElementById('sel-count').textContent =
+    delLabeled ? `${delLabeled} etiquetados 🗑️` + (selN ? ` + ${selN} seleccionados` : '') :
+    selN ? `${selN} seleccionados` : '';
+}
+
+// ─── EXPORTS ──────────────────────────────────────────────────────
+function exportDeleteList(fmt) {
+  const toDelete = projects.filter(p => labels[p.id]==='del' || checked[p.id]);
+  if (!toDelete.length) { alert('Ningún proyecto marcado para eliminar.'); return; }
+
+  if (fmt === 'csv') {
+    const rows = [['Proyecto','Ruta','Archivos','Tamaño','Estado salud','Etiqueta']];
+    toDelete.forEach(p => rows.push([
+      `"${p.name}"`, `"${p.path}"`, p.files.length,
+      fmtSize(p.size), p.health, labels[p.id]||'seleccionado'
+    ]));
+    // Also list individual files
+    rows.push([]);
+    rows.push(['-- ARCHIVOS INDIVIDUALES --']);
+    rows.push(['Proyecto','Archivo','Ruta completa','Tamaño']);
+    toDelete.forEach(p => p.files.forEach(f =>
+      rows.push([`"${p.name}"`,`"${f.name}"`,`"${f.path}"`,f.size])
+    ));
+    download('eliminar_lista.csv', rows.map(r=>r.join(',')).join('\n'), 'text/csv');
+  } else {
+    let txt = `LISTA DE PROYECTOS PARA ELIMINAR\n${'='.repeat(40)}\nGenerado: ${new Date().toLocaleString('es-PA')}\nTotal: ${toDelete.length} proyectos\n\n`;
+    toDelete.forEach((p,i) => {
+      txt += `${i+1}. ${p.name}\n   📁 ${p.path}\n   📊 ${p.files.length} archivos · ${fmtSize(p.size)}\n   🏥 ${p.health}\n\n   Archivos:\n`;
+      p.files.forEach(f => txt += `   · ${f.path} (${fmtSize(f.size)})\n`);
+      txt += '\n';
+    });
+    download('eliminar_lista.txt', txt, 'text/plain');
+  }
+}
+
+function exportAll(fmt) {
+  if (fmt === 'json') {
+    const data = projects.map(p => ({
+      nombre: p.name, ruta: p.path, archivos: p.files.length,
+      tamano: fmtSize(p.size), estado: p.health, etiqueta: labels[p.id]||'sin etiquetar',
+      files: p.files.map(f=>({ nombre:f.name, ruta:f.path, tamano:f.size, fecha:fmtDate(f.modified) }))
+    }));
+    download('inventario_proyectos.json', JSON.stringify(data,null,2), 'application/json');
+  } else {
+    const rows = [['Proyecto','Ruta','Archivos','Tamaño','Estado','Etiqueta']];
+    projects.forEach(p => rows.push([
+      `"${p.name}"`,`"${p.path}"`,p.files.length,fmtSize(p.size),p.health,labels[p.id]||''
+    ]));
+    download('inventario_proyectos.csv', rows.map(r=>r.join(',')).join('\n'), 'text/csv');
+  }
+}
+
+// ─── UI STATE ─────────────────────────────────────────────────────
+function showLoading(on) {
+  document.getElementById('drop-zone').style.display = on ? 'none' : '';
+  document.getElementById('loading').style.display = on ? 'flex' : 'none';
+  document.getElementById('explorer').style.display = 'none';
+}
+
+function showExplorer() {
+  document.getElementById('drop-zone').style.display = 'none';
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('explorer').style.display = 'flex';
+  document.getElementById('view-tabs').style.display = 'flex';
+  document.getElementById('btn-add-folder').style.display = '';
+  document.getElementById('btn-clear').style.display = '';
+}
+
+function clearAll() {
+  if (!confirm('¿Limpiar todo?')) return;
+  projects=[]; allFiles=[]; labels={}; checked={}; labelFilter='all';
+  document.getElementById('drop-zone').style.display = '';
+  document.getElementById('explorer').style.display = 'none';
+  document.getElementById('view-tabs').style.display = 'none';
+  document.getElementById('btn-add-folder').style.display = 'none';
+  document.getElementById('btn-clear').style.display = 'none';
+  document.getElementById('search').value = '';
+  document.getElementById('hdr-stats').textContent = '';
+}
+
+// ─── HELPERS ──────────────────────────────────────────────────────
+function fmtSize(b) {
+  if (!b) return '0 B';
+  if (b<1024) return b+' B';
+  if (b<1048576) return (b/1024).toFixed(1)+' KB';
+  if (b<1073741824) return (b/1048576).toFixed(1)+' MB';
+  return (b/1073741824).toFixed(2)+' GB';
+}
+function fmtDate(ms) {
+  if (!ms) return '—';
+  return new Date(ms).toLocaleDateString('es-PA',{day:'2-digit',month:'short',year:'2-digit'});
+}
+function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function download(name, content, type) {
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([content],{type}));
+  a.download=name; a.click();
+}
+
+function getFileIcon(ext, name) {
+  const n = (name||'').toLowerCase();
+  if (HTML_EXTS.has(ext)) return '🌐';
+  if (CODE_EXTS.has(ext)) return '⚙️';
+  if (STYLE_EXTS.has(ext)) return '🎨';
+  if (DATA_EXTS.has(ext)) return '📋';
+  if (PWA_FILES.has(n)) return '🔧';
+  if (MANIFEST_F.has(n)) return '📱';
+  if (IMG_EXTS.has(ext)) return '🖼️';
+  if (['md','txt'].includes(ext)) return '📝';
+  if (['zip','rar','7z','tar','gz'].includes(ext)) return '📦';
+  if (['mp3','wav','ogg','aac'].includes(ext)) return '🎵';
+  if (['mp4','mov','avi','mkv'].includes(ext)) return '🎬';
+  return '📄';
+}
+
+function getExtColor(ext, name) {
+  if (HTML_EXTS.has(ext)) return { bg:'rgba(249,115,22,.15)', fg:'#fb923c' };
+  if (CODE_EXTS.has(ext)) return { bg:'rgba(234,179,8,.15)',  fg:'#eab308' };
+  if (STYLE_EXTS.has(ext))return { bg:'rgba(59,130,246,.15)', fg:'#60a5fa' };
+  if (DATA_EXTS.has(ext)) return { bg:'rgba(168,85,247,.15)', fg:'#c084fc' };
+  if (IMG_EXTS.has(ext))  return { bg:'rgba(232,121,249,.15)',fg:'#e879f9' };
+  return { bg:'rgba(136,136,170,.1)', fg:'#8888aa' };
+}
+
+// ─── EVENTS ───────────────────────────────────────────────────────
+document.getElementById('search').addEventListener('input', render);
+document.getElementById('sort-sel').addEventListener('change', render);
+
+// Drag & drop on drop zone
+const dz = document.getElementById('drop-zone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+dz.addEventListener('drop', async e => {
+  e.preventDefault(); dz.classList.remove('drag-over');
+  const items = [...e.dataTransfer.items];
+  const raw = [];
+  showLoading(true);
+  for (const item of items) {
+    if (item.kind==='file' && item.getAsFileSystemHandle) {
+      const h = await item.getAsFileSystemHandle();
+      if (h.kind==='directory') await scanDir(h, h.name, raw);
+    }
+  }
+  if (raw.length) {
+    allFiles = raw;
+    projects = buildProjects(raw);
+    showExplorer();
+    render();
+  } else {
+    showLoading(false);
+  }
+});
+
+// SW
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js'));
+}
+</script>
+</body>
+</html>
