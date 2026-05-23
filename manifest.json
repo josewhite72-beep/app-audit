@@ -2,7 +2,7 @@
   "name": "AppAudit — Clasificador de Proyectos",
   "short_name": "AppAudit",
   "description": "Detecta, clasifica y audita proyectos HTML/PWA locales",
-  "start_url": "/",
+  "start_url": "/app-audit/",
   "display": "standalone",
   "background_color": "#0a0a0f",
   "theme_color": "#0a0a0f",
